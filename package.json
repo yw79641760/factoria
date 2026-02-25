@@ -8,11 +8,15 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\"",
     "dev:web": "npm run dev --workspace=web",
-    "dev:api": "vercel dev",
+    "dev:api": "node api-server.js",
     "build": "npm run build --workspace=web",
     "deploy": "vercel --prod"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
   }
 }
