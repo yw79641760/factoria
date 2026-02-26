@@ -10,12 +10,15 @@
     "dev:web": "npm run dev --workspace=web",
     "dev:api": "node api-server.js",
     "build": "npm run build --workspace=web",
-    "deploy": "vercel --prod"
+    "deploy": "vercel --prod",
+    "db:init": "echo '请在 Supabase SQL Editor 中执行 supabase/schema.sql'"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "@types/node": "^20.0.0"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
     "cors": "^2.8.6",
     "express": "^5.2.1"
   }
