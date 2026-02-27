@@ -91,32 +91,60 @@ export class GLM5Client {
   }
 
   /**
-   * 解析用户需求（NLU）
+   * 能力编排（NLU + Orchestration）
+   * 根据用户意图，识别并编排需要的能力
    */
-  async parseIntent(prompt: string): Promise<any> {
-    const systemPrompt = `你是一个APP需求解析专家。请分析用户的需求，提取以下信息：
+  async orchestrateAbilities(prompt: string): Promise<any> {
+    const systemPrompt = `你是一个能力编排专家。
 
-1. **意图类型** (type): 选择以下之一
-   - tracker: 数据追踪（体重、开支、习惯等）
-   - todo: 待办清单（任务、计划）
-   - calculator: 计算器（BMI、汇率、单位换算）
-   - countdown: 倒计时（生日、纪念日）
-   - notes: 笔记（记录、备忘）
+核心思想：不是选择模板，而是识别并编排需要的能力。
 
-2. **应用名称** (name): 简洁的应用名称（2-8字）
+能力库：
+数据层能力：
+- storage: 数据存储和管理
+- persistence: 数据持久化（localStorage）
+- export: 数据导出（CSV/JSON）
 
-3. **数据字段** (fields): 用户需要记录/输入的数据
-   - 每个字段包含: name, type, required
-   - 类型: text, number, date, select, textarea
+UI层能力：
+- form-input: 表单输入
+- list-display: 列表展示
+- card-display: 卡片展示
+- chart: 图表可视化
 
-4. **功能特性** (features): 可选功能
-   - chart: 图表展示
-   - export: 导出功能
-   - search: 搜索过滤
-   - share: 分享功能
-   - reminder: 提醒通知
+交互层能力：
+- add: 添加记录
+- edit: 编辑记录
+- delete: 删除记录
+- toggle: 切换状态（完成/未完成）
+- filter: 过滤数据
+- sort: 排序数据
 
-请以JSON格式返回结果，不要包含其他说明文字。`;
+你的任务：
+1. 理解用户意图
+2. 识别需要的能力（从能力库中选择）
+3. 按顺序编排这些能力
+4. 生成完整的React代码
+
+示例：
+用户："追踪每天喝水量"
+→ 意图：数据追踪
+→ 需要的能力：form-input → add → storage → persistence → list-display → chart
+→ 生成代码：包含表单输入、添加按钮、数据存储、列表展示、图表可视化
+
+用户："管理待办清单"
+→ 意图：任务管理
+→ 需要的能力：form-input → add → storage → persistence → list-display → toggle → delete
+→ 生成代码：包含表单输入、添加按钮、数据存储、列表展示、切换完成状态、删除功能
+
+输出格式（JSON）：
+{
+  "intent": "用户意图描述",
+  "app_name": "应用名称（2-8字）",
+  "abilities": ["ability1", "ability2", ...],
+  "orchestration": "编排逻辑说明"
+}
+
+只返回JSON，不要包含其他说明文字。`;
 
     const userMessage = `用户需求：\n"""${prompt}"""`;
 
@@ -125,40 +153,94 @@ export class GLM5Client {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userMessage }
       ], {
-        temperature: 0.3,  // 低温度，更确定的输出
-        maxTokens: 1000
+        temperature: 0.5,  // 中等温度，允许一定灵活性
+        maxTokens: 2000
       });
 
-      // 尝试解析JSON
+      // 解析JSON
       let jsonStr = response.trim();
       
-      // 如果包含markdown代码块，提取内容
       if (jsonStr.includes('```json')) {
         const match = jsonStr.match(/```json\n([\s\S]+?)\n```/);
-        if (match) {
-          jsonStr = match[1];
-        }
+        if (match) jsonStr = match[1];
       } else if (jsonStr.includes('```')) {
         const match = jsonStr.match(/```\n([\s\S]+?)\n```/);
-        if (match) {
-          jsonStr = match[1];
-        }
+        if (match) jsonStr = match[1];
       }
 
-      const intent = JSON.parse(jsonStr);
+      const orchestration = JSON.parse(jsonStr);
       
       // 验证必要字段
-      if (!intent.type || !intent.name) {
-        throw new Error('Invalid intent: missing required fields');
+      if (!orchestration.intent || !orchestration.abilities) {
+        throw new Error('Invalid orchestration: missing required fields');
       }
 
       // 添加置信度
-      intent.confidence = 0.9;
+      orchestration.confidence = 0.9;
 
-      return intent;
+      return orchestration;
     } catch (error) {
-      console.error('Failed to parse intent:', error);
-      throw new Error('Failed to parse user intent');
+      console.error('Failed to orchestrate abilities:', error);
+      throw new Error('Failed to orchestrate abilities');
+    }
+  }
+
+  /**
+   * 生成代码（基于能力编排）
+   */
+  async generateCode(orchestration: any): Promise<string> {
+    const systemPrompt = `你是一个React代码生成专家。
+
+基于能力编排生成完整的React应用代码。
+
+要求：
+1. 使用React 18 + TypeScript
+2. 使用Tailwind CSS进行样式
+3. 使用localStorage进行数据持久化
+4. 代码要完整、可直接运行
+5. 组件结构清晰，可维护
+
+代码结构建议：
+- 主App组件
+- 状态管理（useState）
+- 数据持久化（useEffect）
+- UI渲染（基于编排的能力）
+
+请生成完整的代码。`;
+
+    const userMessage = `
+能力编排结果：
+${JSON.stringify(orchestration, null, 2)}
+
+请生成完整的React应用代码。`;
+
+    try {
+      const response = await this.chat([
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage }
+      ], {
+        temperature: 0.7,
+        maxTokens: 3000
+      });
+
+      // 提取代码
+      let code = response.trim();
+      
+      if (code.includes('```typescript')) {
+        const match = code.match(/```typescript\n([\s\S]+?)\n```/);
+        if (match) code = match[1];
+      } else if (code.includes('```tsx')) {
+        const match = code.match(/```tsx\n([\s\S]+?)\n```/);
+        if (match) code = match[1];
+      } else if (code.includes('```')) {
+        const match = code.match(/```\n([\s\S]+?)\n```/);
+        if (match) code = match[1];
+      }
+
+      return code;
+    } catch (error) {
+      console.error('Failed to generate code:', error);
+      throw new Error('Failed to generate code');
     }
   }
 

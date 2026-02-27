@@ -8,18 +8,20 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\"",
     "dev:web": "npm run dev --workspace=web",
-    "dev:api": "node api-server.js",
+    "dev:api": "node api-server-glm5-v2.js",
     "build": "npm run build --workspace=web",
     "deploy": "vercel --prod",
     "db:init": "echo '请在 Supabase SQL Editor 中执行 supabase/schema.sql'"
   },
   "devDependencies": {
+    "@types/node": "^20.0.0",
     "concurrently": "^8.2.2",
-    "@types/node": "^20.0.0"
+    "tsx": "^4.21.0"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
     "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
     "express": "^5.2.1"
   }
 }
