@@ -44,7 +44,7 @@ export async function createDeployment(
     throw new Error('VERCEL_PROJECT_ID is not configured');
   }
 
-  // 构建部署请求
+  // 构建部署请求 - 使用简化的静态文件部署
   const deploymentPayload = {
     name: `app_${Date.now()}`,
     project: projectId,
@@ -73,10 +73,17 @@ export async function createDeployment(
 
     if (!response.ok) {
       const error = await response.text();
+      console.error('Vercel API error response:', error);
       throw new Error(`Vercel API error: ${response.status} - ${error}`);
     }
 
     const deployment = await response.json();
+
+    console.log('Vercel deployment response:', {
+      id: deployment.id,
+      url: deployment.url,
+      state: deployment.readyState
+    });
 
     return {
       url: deployment.url || `https://${deployment.name}.vercel.app`,
@@ -104,6 +111,11 @@ export function generateHtmlFile(
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${appName} - Factoria</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React and ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX transformation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -118,7 +130,7 @@ export function generateHtmlFile(
     <div class="container mx-auto px-4 py-8">
         <h1 class="text-4xl font-bold text-white mb-8">${appName}</h1>
         <div id="app"></div>
-        <script>
+        <script type="text/babel" data-type="module">
             ${appCode}
         </script>
     </div>
@@ -136,31 +148,14 @@ export async function deployApp(
   // 生成 HTML 文件
   const htmlContent = generateHtmlFile(appCode, appName);
 
-  // 创建部署
+  console.log('HTML file length:', htmlContent.length);
+
+  // 创建部署 - 只上传 index.html
   return await createDeployment({
     files: [
       {
         file: 'index.html',
         data: htmlContent,
-        encoding: 'utf-8'
-      },
-      {
-        file: 'vercel.json',
-        data: JSON.stringify({
-          version: 2,
-          builds: [
-            {
-              src: 'index.html',
-              use: '@vercel/static'
-            }
-          ],
-          routes: [
-            {
-              src: '/(.*)',
-              dest: '/index.html'
-            }
-          ]
-        }, null, 2),
         encoding: 'utf-8'
       }
     ]
