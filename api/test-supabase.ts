@@ -24,10 +24,6 @@ export default async function handler(
     const stats = await Database.getStats();
     console.log('[Supabase Test] Stats retrieved:', stats);
 
-    // 2. 测试获取一个APP（如果有）
-    const testApp = await Database.getApp('test-id');
-    console.log('[Supabase Test] App retrieval result:', testApp ? 'Success' : 'Not found');
-
     return res.status(200).json({
       success: true,
       data: {

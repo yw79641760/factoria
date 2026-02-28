@@ -10,9 +10,11 @@ dotenv.config({ path: path.join(process.cwd(), 'configs', '.env') });
 async function loadHandlers() {
   const generateModule = await import('./api/generate-real.ts');
   const healthModule = await import('./api/health.ts');
+  const supabaseTestModule = await import('./api/test-supabase.ts');
   return {
     generate: generateModule.default,
-    health: healthModule.default
+    health: healthModule.default,
+    supabaseTest: supabaseTestModule.default
   };
 }
 
@@ -24,10 +26,11 @@ app.use(cors());
 app.use(express.json());
 
 // Start server with async handler loading
-loadHandlers().then(({ generate, health }) => {
+loadHandlers().then(({ generate, health, supabaseTest }) => {
   // Routes
   app.use('/api/health', health);
   app.use('/api/generate', generate);
+  app.use('/api/test-supabase', supabaseTest);
 
   // Error handler
   app.use((err, req, res, next) => {
@@ -43,6 +46,7 @@ loadHandlers().then(({ generate, health }) => {
     console.log(`🚀 Factoria API (Ability-Driven) running at http://localhost:${PORT}`);
     console.log(`📝 Health: http://localhost:${PORT}/api/health`);
     console.log(`⚡ Generate: POST http://localhost:${PORT}/api/generate`);
+    console.log(`🗄️  Supabase Test: GET http://localhost:${PORT}/api/test-supabase`);
   });
 }).catch(err => {
   console.error('Failed to load handlers:', err);
