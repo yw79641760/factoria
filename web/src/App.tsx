@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import './App.css'
 
 function App() {
@@ -167,11 +169,24 @@ function App() {
                   {result.code && (
                     <details className="mt-4">
                       <summary className="cursor-pointer text-purple-200 hover:text-white">
-                        查看代码
+                        查看代码（带语法高亮）
                       </summary>
-                      <pre className="mt-4 p-4 bg-black/50 rounded-lg overflow-auto text-sm text-green-300">
-                        {result.code}
-                      </pre>
+                      <div className="mt-4 rounded-lg overflow-hidden">
+                        <SyntaxHighlighter
+                          language="javascript"
+                          style={oneDark}
+                          showLineNumbers={true}
+                          wrapLines={true}
+                          customStyle={{
+                            margin: 0,
+                            padding: '16px',
+                            fontSize: '14px',
+                            lineHeight: '1.6'
+                          }}
+                        >
+                          {result.code}
+                        </SyntaxHighlighter>
+                      </div>
                     </details>
                   )}
                 </div>
