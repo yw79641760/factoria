@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { glm5Client } from './lib/glm5-client.js';
 import { Database } from './lib/database.js';
+import { vercelDeployClient } from './lib/vercel-deploy.js';
 
 /**
  * POST /api/generate
@@ -67,8 +68,30 @@ export default async function handler(
       abilities: orchestration.abilities
     });
 
-    // 7. 模拟部署（MVP阶段，实际部署需要Vercel API）
-    const vercelUrl = `https://${app.id}.vercel.app`;
+    // 7. Vercel 部署（自动部署）
+    const deploymentConfig = {
+      name: app.id,
+      framework: 'vite',
+      buildCommand: 'npm run build',
+      outputDirectory: 'dist',
+      files: [
+        {
+          file: 'index.html',
+          content: `<!DOCTYPE html><html><head><title>${app.id}</title></head><body><div id="root"></div></body></html>`,
+        },
+        {
+          file: 'package.json',
+          content: JSON.stringify({
+            name: app.id,
+            scripts: { build: 'vite build' },
+            dependencies: { react: '^19.2.0', 'react-dom': '^19.2.0' },
+          }, null, 2),
+        },
+      ],
+    };
+
+    const deployment = await vercelDeployClient.deploy(deploymentConfig);
+    const vercelUrl = deployment.url;
     
     // 8. 更新状态为ready
     await Database.updateAppStatus(app.id, 'ready', {
