@@ -1,5 +1,10 @@
+import dotenv from 'dotenv';
+import path from 'path';
 import express from 'express';
 import cors from 'cors';
+
+// 加载 configs/.env 文件
+dotenv.config({ path: path.join(process.cwd(), 'configs', '.env') });
 
 // 使用 tsx 动态导入 TypeScript 文件
 async function loadHandlers() {
