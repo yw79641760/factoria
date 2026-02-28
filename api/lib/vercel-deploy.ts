@@ -1,198 +1,206 @@
 /**
- * Vercel Deployment API Client
- *
- * 用于通过 Vercel API 部署动态生成的应用
- *
- * 环境变量需求：
- * - VERCEL_TOKEN: Vercel API Token（从 Vercel Dashboard → Settings → Tokens 创建）
- * - VERCEL_ORG_ID: 组织 ID（从 Vercel 项目设置 → General 获取）
- * - VERCEL_PROJECT_ID: 项目 ID（从 Vercel 项目设置 → General 获取）
- *
- * 文档：https://vercel.com/docs/deployments
+ * Vercel Deployment Helper
+ * 使用 Vercel REST API 动态部署生成的 APP 代码
  */
+
+interface VercelDeploymentOptions {
+  files: Array<{
+    file: string;
+    data: string;
+    encoding?: 'utf8' | 'base64';
+  }>;
+  projectName?: string;
+  environmentVariables?: Record<string, string>;
+}
 
 interface VercelDeploymentResponse {
   url: string;
   deployId: string;
-  alias: string[];
-}
-
-interface VercelDeploymentConfig {
-  name: string;
-  framework: string;
-  buildCommand: string;
-  outputDirectory: string;
-  files: Array<{
-    file: string;
-    content: string;
-  }>;
-  env?: Record<string, string>;
+  deployUrl: string;
+  state: string;
 }
 
 /**
- * Vercel 部署客户端类
+ * 创建 Vercel 部署
  */
-export class VercelDeployClient {
-  private token: string;
-  private orgId: string;
-  private projectId: string;
-  private baseUrl: string;
+export async function createDeployment(
+  options: VercelDeploymentOptions
+): Promise<VercelDeploymentResponse> {
+  const {
+    files,
+    projectName = process.env.VERCEL_PROJECT_NAME || 'factoria-app',
+    environmentVariables = {}
+  } = options;
 
-  constructor() {
-    this.token = process.env.VERCEL_TOKEN || '';
-    this.orgId = process.env.VERCEL_ORG_ID || '';
-    this.projectId = process.env.VERCEL_PROJECT_ID || '';
-    this.baseUrl = 'https://api.vercel.com/v10';
+  // 从环境变量获取配置
+  const accessToken = process.env.VERCEL_ACCESS_TOKEN;
+  const projectId = process.env.VERCEL_PROJECT_ID;
 
-    if (!this.token) {
-      console.warn('⚠️ VERCEL_TOKEN not configured, using mock deployment');
-    }
+  if (!accessToken) {
+    throw new Error('VERCEL_ACCESS_TOKEN is not configured');
   }
 
-  /**
-   * 部署应用到 Vercel
-   *
-   * @param config 部署配置
-   * @returns 部署结果（URL）
-   */
-  async deploy(config: VercelDeploymentConfig): Promise<VercelDeploymentResponse> {
-    // 如果未配置 Vercel Token，使用模拟部署
-    if (!this.token) {
-      return this.mockDeploy(config);
-    }
+  if (!projectId) {
+    throw new Error('VERCEL_PROJECT_ID is not configured');
+  }
 
-    try {
-      // 创建部署
-      const response = await fetch(`${this.baseUrl}/deployments`, {
+  // 构建部署请求
+  const deploymentPayload = {
+    name: `app_${Date.now()}`,
+    project: projectId,
+    target: 'production',
+    files: files.map(f => ({
+      file: f.file,
+      data: f.data,
+      encoding: f.encoding || 'utf8'
+    })),
+    env: environmentVariables
+  };
+
+  try {
+    // 发送部署请求
+    const response = await fetch(
+      `https://api.vercel.com/v13/deployments`,
+      {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.token}`,
-          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          name: config.name,
-          project: this.projectId,
-          teamId: this.orgId,
-          framework: config.framework,
-          buildCommand: config.buildCommand,
-          outputDirectory: config.outputDirectory,
-          files: config.files,
-          env: config.env,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`Vercel deployment failed: ${error}`);
+        body: JSON.stringify(deploymentPayload)
       }
+    );
 
-      const deployment = await response.json();
-      return {
-        url: deployment.url,
-        deployId: deployment.id,
-        alias: deployment.alias || [],
-      };
-    } catch (error: any) {
-      console.error('Vercel deployment error:', error);
-      // 如果部署失败，使用模拟部署作为回退
-      console.warn('⚠️ Falling back to mock deployment');
-      return this.mockDeploy(config);
-    }
-  }
-
-  /**
-   * 获取部署状态
-   *
-   * @param deploymentId 部署 ID
-   * @returns 部署状态
-   */
-  async getDeploymentStatus(deploymentId: string): Promise<{
-    state: 'QUEUED' | 'BUILDING' | 'READY' | 'ERROR';
-    url?: string;
-  }> {
-    if (!this.token) {
-      // 模拟部署总是成功
-      return { state: 'READY', url: `https://mock-${deploymentId}.vercel.app` };
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Vercel API error: ${response.status} - ${error}`);
     }
 
-    try {
-      const response = await fetch(`${this.baseUrl}/deployments/${deploymentId}`, {
-        headers: {
-          'Authorization': `Bearer ${this.token}`,
-        },
-      });
+    const deployment = await response.json();
 
-      if (!response.ok) {
-        throw new Error(`Failed to get deployment status`);
-      }
-
-      const deployment = await response.json();
-      return {
-        state: deployment.readyState,
-        url: deployment.url,
-      };
-    } catch (error: any) {
-      console.error('Failed to get deployment status:', error);
-      return { state: 'ERROR' };
-    }
-  }
-
-  /**
-   * 模拟部署（用于 MVP 阶段，未配置真实 API 时）
-   *
-   * @param config 部署配置
-   * @returns 模拟的部署结果
-   */
-  private mockDeploy(config: VercelDeploymentConfig): VercelDeploymentResponse {
-    const mockId = Date.now().toString();
-    console.log(`📦 Mock deployment: ${config.name}`);
     return {
-      url: `https://${config.name}-${mockId}.vercel.app`,
-      deployId: mockId,
-      alias: [`${config.name}.vercel.app`],
+      url: deployment.url || `https://${deployment.name}.vercel.app`,
+      deployId: deployment.id || '',
+      deployUrl: deployment.deployUrl || '',
+      state: deployment.readyState || ''
     };
-  }
-
-  /**
-   * 创建 Vercel 项目（如果不存在）
-   *
-   * @param projectName 项目名称
-   * @returns 项目 ID
-   */
-  async createProject(projectName: string): Promise<string> {
-    if (!this.token) {
-      console.warn('⚠️ VERCEL_TOKEN not configured, cannot create project');
-      return '';
-    }
-
-    try {
-      const response = await fetch(`${this.baseUrl}/projects`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: projectName,
-          framework: 'vite',
-          buildCommand: 'npm run build',
-          outputDirectory: 'dist',
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`Failed to create Vercel project: ${error}`);
-      }
-
-      const project = await response.json();
-      return project.id;
-    } catch (error: any) {
-      console.error('Failed to create Vercel project:', error);
-      return '';
-    }
+  } catch (error: any) {
+    console.error('Vercel deployment error:', error);
+    throw error;
   }
 }
 
-// 导出单例实例
-export const vercelDeployClient = new VercelDeployClient();
+/**
+ * 生成 HTML 文件（基于生成的代码）
+ */
+export function generateHtmlFile(
+  appCode: string,
+  appName: string = 'My App'
+): string {
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${appName} - Factoria</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e1b4b 0%, #4c1d95 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-white mb-8">${appName}</h1>
+        <div id="app"></div>
+        <script>
+            ${appCode}
+        </script>
+    </div>
+</body>
+</html>`;
+}
+
+/**
+ * 部署生成的 APP 到 Vercel
+ */
+export async function deployApp(
+  appCode: string,
+  appName: string = 'My App'
+): Promise<VercelDeploymentResponse> {
+  // 生成 HTML 文件
+  const htmlContent = generateHtmlFile(appCode, appName);
+
+  // 创建部署
+  return await createDeployment({
+    files: [
+      {
+        file: 'index.html',
+        data: htmlContent,
+        encoding: 'utf8'
+      },
+      {
+        file: 'vercel.json',
+        data: JSON.stringify({
+          version: 2,
+          builds: [
+            {
+              src: 'index.html',
+              use: '@vercel/static'
+            }
+          ],
+          routes: [
+            {
+              src: '/(.*)',
+              dest: '/index.html'
+            }
+          ]
+        }, null, 2),
+        encoding: 'utf8'
+      }
+    ]
+  });
+}
+
+/**
+ * 获取部署状态
+ */
+export async function getDeploymentStatus(
+  deployId: string
+): Promise<{ state: string; url?: string }> {
+  const accessToken = process.env.VERCEL_ACCESS_TOKEN;
+
+  if (!accessToken) {
+    throw new Error('VERCEL_ACCESS_TOKEN is not configured');
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.vercel.com/v13/deployments/${deployId}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Vercel API error: ${response.status}`);
+    }
+
+    const deployment = await response.json();
+
+    return {
+      state: deployment.readyState || '',
+      url: deployment.url || ''
+    };
+  } catch (error: any) {
+    console.error('Get deployment status error:', error);
+    throw error;
+  }
+}

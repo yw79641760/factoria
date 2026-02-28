@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { glm5Client } from './lib/glm5-client.js';
 import { Database } from './lib/database.js';
+import { deployApp } from './lib/vercel-deploy.js';
 import { vercelDeployClient } from './lib/vercel-deploy.js';
 
 /**
@@ -68,31 +69,20 @@ export default async function handler(
       abilities: orchestration.abilities
     });
 
-    // 7. Vercel 部署（自动部署）
-    const deploymentConfig = {
-      name: app.id,
-      framework: 'vite',
-      buildCommand: 'npm run build',
-      outputDirectory: 'dist',
-      files: [
-        {
-          file: 'index.html',
-          content: `<!DOCTYPE html><html><head><title>${app.id}</title></head><body><div id="root"></div></body></html>`,
-        },
-        {
-          file: 'package.json',
-          content: JSON.stringify({
-            name: app.id,
-            scripts: { build: 'vite build' },
-            dependencies: { react: '^19.2.0', 'react-dom': '^19.2.0' },
-          }, null, 2),
-        },
-      ],
-    };
+    // 7. Vercel 部署（真实部署或模拟部署）
+    let vercelUrl: string;
 
-    const deployment = await vercelDeployClient.deploy(deploymentConfig);
-    const vercelUrl = deployment.url;
-    
+    if (process.env.VERCEL_ACCESS_TOKEN && process.env.VERCEL_PROJECT_ID) {
+      // 使用真实的 Vercel API 部署
+      console.log(`[${new Date().toISOString()}] Deploying to Vercel (real API)`);
+      const deployment = await deployApp(code, orchestration.app_name);
+      vercelUrl = deployment.url;
+    } else {
+      // 模拟部署（MVP 阶段）
+      console.log(`[${new Date().toISOString()}] Using mock deployment (VERCEL_ACCESS_TOKEN not configured)`);
+      vercelUrl = `https://${app.id}.vercel.app`;
+    }
+
     // 8. 更新状态为ready
     await Database.updateAppStatus(app.id, 'ready', {
       vercel_url: vercelUrl,
