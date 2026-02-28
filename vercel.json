@@ -1,28 +1,21 @@
 {
-  "version": 2,
-  "builds": [
+  "buildCommand": "cd web && npm run build",
+  "outputDirectory": "web/dist",
+  "installCommand": "cd web && npm install",
+  "framework": "vite",
+  "rewrites": [
     {
-      "src": "web/package.json",
-      "use": "@vercel/static-build"
+      "source": "/api/(.*)",
+      "destination": "http://localhost:3000/api/$1"
     },
     {
-      "src": "api/**/*.js",
-      "use": "@vercel/node"
+      "source": "/(.*)",
+      "destination": "/$1"
     }
   ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/web/$1"
+  "functions": {
+    "api/**/*.ts": {
+      "runtime": "nodejs22.x"
     }
-  ],
-  "env": {
-    "SUPABASE_URL": "@supabase-url",
-    "SUPABASE_ANON_KEY": "@supabase-anon-key",
-    "GLM_API_KEY": "@glm-api-key"
   }
 }
