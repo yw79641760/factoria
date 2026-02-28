@@ -27,10 +27,10 @@ interface GLMResponse {
 
 export class GLM5Client {
   private apiKey: string;
-  private baseUrl = 'https://open.bigmodel.cn/api/paas/v3/model-api';
+  private baseUrl = 'https://open.bigmodel.cn/api/paas/v4';
 
   constructor(apiKey?: string) {
-    this.apiKey = apiKey || process.env.GLM_API_KEY!;
+    this.apiKey = apiKey || process.env.LLM_API_KEY!;
     
     if (!this.apiKey) {
       throw new Error('GLM_API_KEY is required');
@@ -57,7 +57,7 @@ export class GLM5Client {
     } = options;
 
     try {
-      const response = await fetch(`${this.baseUrl}/${model}/chat/completions`, {
+      const response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { glm5Client } from './lib/glm5-client.js';
-import { Database } from './lib/database.js';
+import { memoryStorage } from './lib/memory-storage.js';
 import { deployApp } from './lib/vercel-deploy.js';
 import { vercelDeployClient } from './lib/vercel-deploy.js';
 
@@ -39,12 +39,10 @@ export default async function handler(
     }
 
     // 2. 创建APP记录（状态：generating）
-    const appId = `app_${Date.now()}`;
-    const app = await Database.createApp({
+    const app = await memoryStorage.createApp({
       user_id: userId,
       prompt,
       intent: { type: 'tracker', name: 'Generating...' },  // 临时
-      template: 'unknown',
       code: '',
       status: 'generating'
     });
@@ -54,9 +52,9 @@ export default async function handler(
     const orchestration = await glm5Client.orchestrateAbilities(prompt);
     
     // 4. 更新Orchestration
-    await Database.updateAppStatus(app.id, 'generating', { 
+    await memoryStorage.updateAppStatus(app.id, 'generating', {
       intent: orchestration,
-      abilities: orchestration.abilities 
+      abilities: orchestration.abilities
     });
 
     // 5. 生成代码（基于能力编排）
@@ -64,7 +62,7 @@ export default async function handler(
     const code = await glm5Client.generateCode(orchestration);
 
     // 6. 更新代码
-    await Database.updateAppStatus(app.id, 'deploying', { 
+    await memoryStorage.updateAppStatus(app.id, 'deploying', {
       code,
       abilities: orchestration.abilities
     });
@@ -84,7 +82,7 @@ export default async function handler(
     }
 
     // 8. 更新状态为ready
-    await Database.updateAppStatus(app.id, 'ready', {
+    await memoryStorage.updateAppStatus(app.id, 'ready', {
       vercel_url: vercelUrl,
       deploy_time: 5
     });

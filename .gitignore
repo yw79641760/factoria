@@ -35,3 +35,4 @@ generated/*
 .idea/
 *.swp
 *.swo
+.vercel
