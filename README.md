@@ -118,24 +118,25 @@ curl -X POST http://localhost:3000/api/generate \
 - [x] 代码生成引擎
 - [x] Supabase数据库配置
 
-### Phase 2: 核心功能 ✅ 80% 完成
+### Phase 2: 核心功能 ✅ 90% 完成
 
 - [x] GLM-5客户端封装（能力编排）
 - [x] 能力库定义（11个能力）
 - [x] 生成API端点（能力驱动）
 - [x] 前端UI实现
 - [x] Mock代码生成
-- [ ] Vercel自动部署集成
-- [ ] PWA配置
-- [ ] 数据持久化（完整实现）
+- [x] Vercel自动部署集成
+- [x] PWA配置
+- [x] 数据持久化（完整实现）
 
-### Phase 3: 优化与上线 ⏳ 0% 完成
+### Phase 3: 优化与上线 ✅ 40% 完成
 
-- [ ] Vercel自动部署
-- [ ] PWA配置
+- [x] Vercel自动部署
+- [x] PWA配置
 - [ ] 用户体验优化
-- [ ] 错误处理
+- [ ] 真实LLM代码生成（需要配置API Key）
 - [ ] 性能优化
+- [ ] 错误处理增强
 - [ ] 文档完善
 - [ ] 部署上线
 
@@ -167,6 +168,33 @@ curl -X POST http://localhost:3000/api/generate \
 - [快速开始](QUICKSTART.md)
 - [MVP 测试指南](MVP_TEST_GUIDE.md)
 - [LLM 集成说明](MVP_WITH_LLM.md)
+- [LLM API Key 配置指南](docs/LLM_API_KEY_GUIDE.md)
+- [Vercel 部署配置指南](docs/VERCEL_DEPLOYMENT_GUIDE.md)
+
+### 配置指南
+
+Factoria 需要以下配置才能完全运行：
+
+**必需**（用于高级功能）：
+- [LLM API Key](docs/LLM_API_KEY_GUIDE.md) - 智谱 AI API 配置
+- [Vercel 配置](docs/VERCEL_DEPLOYMENT_GUIDE.md) - 真实部署配置
+
+**可选**（MVP 阶段可跳过）：
+- Supabase - 数据库配置（可选，可用于持久化）
+
+快速配置：
+```bash
+# 1. 复制环境变量模板
+cp configs/.env.example configs/.env
+
+# 2. 编辑配置文件
+# - LLM_API_KEY（来自智谱 AI）
+# - VERCEL_ACCESS_TOKEN（来自 Vercel）
+# - VERCEL_PROJECT_ID（来自 Vercel）
+
+# 3. 启动服务器
+npm run dev
+```
 
 ---
 
