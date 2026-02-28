@@ -7,6 +7,14 @@ function App() {
   const [result, setResult] = useState<{
     url?: string
     code?: string
+    orchestration?: {
+      intent: string
+      app_name: string
+      abilities: string[]
+      orchestration: string
+    }
+    abilities?: string[]
+    deployTime?: number
     error?: string
   } | null>(null)
 
@@ -27,11 +35,14 @@ function App() {
 
       if (data.success) {
         setResult({
-          url: data.url,
-          code: data.code
+          url: data.data.url,
+          code: data.data.code,
+          orchestration: data.data.orchestration,
+          abilities: data.data.abilities,
+          deployTime: data.data.deployTime
         })
       } else {
-        setResult({ error: data.error })
+        setResult({ error: data.error?.message || 'Unknown error' })
       }
     } catch (error) {
       setResult({ error: 'Failed to generate app' })
@@ -94,6 +105,53 @@ function App() {
                 <div>
                   <p className="text-xl font-bold text-green-300 mb-4">✅ APP生成成功！</p>
 
+                  {/* App Name & Intent */}
+                  {result.orchestration && (
+                    <div className="mb-6 p-4 bg-white/10 rounded-lg">
+                      <p className="text-white font-semibold mb-2">
+                        🎯 {result.orchestration.app_name || '您的APP'}
+                      </p>
+                      <p className="text-purple-200 text-sm">
+                        {result.orchestration.intent}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Identified Abilities */}
+                  {result.abilities && result.abilities.length > 0 && (
+                    <div className="mb-6">
+                      <p className="text-purple-200 mb-3">识别的能力：</p>
+                      <div className="flex flex-wrap gap-2">
+                        {result.abilities.map((ability, index) => (
+                          <span
+                            key={index}
+                            className="px-3 py-1 bg-purple-500/30 text-purple-100 rounded-full text-sm border border-purple-400/30"
+                          >
+                            {ability}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Orchestration Flow */}
+                  {result.orchestration?.orchestration && (
+                    <div className="mb-6 p-4 bg-white/10 rounded-lg">
+                      <p className="text-purple-200 mb-2">能力编排流程：</p>
+                      <p className="text-white text-sm">
+                        {result.orchestration.orchestration}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Deploy Time */}
+                  {result.deployTime && (
+                    <div className="mb-6 text-purple-200 text-sm">
+                      ⚡ 生成耗时：{result.deployTime} 秒
+                    </div>
+                  )}
+
+                  {/* App URL */}
                   {result.url && (
                     <a
                       href={result.url}
@@ -105,6 +163,7 @@ function App() {
                     </a>
                   )}
 
+                  {/* Code Preview */}
                   {result.code && (
                     <details className="mt-4">
                       <summary className="cursor-pointer text-purple-200 hover:text-white">
