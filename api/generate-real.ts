@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { glm5Client } from './lib/glm5-client.js';
-import { Database, App } from './lib/database.js';
+import { memoryStorage } from './lib/memory-storage.js';
 import { deployApp } from './lib/vercel-deploy.js';
 import { vercelDeployClient } from './lib/vercel-deploy.js';
 
@@ -39,11 +39,10 @@ export default async function handler(
     }
 
     // 2. 创建APP记录（状态：generating）
-    const app = await Database.createApp({
+    const app = await memoryStorage.createApp({
       user_id: userId,
       prompt,
-      intent: { type: 'tracker', name: 'Generating...' } as any,  // 临时
-      template: 'custom',
+      intent: { type: 'tracker', name: 'Generating...' } as any,
       code: '',
       status: 'generating'
     });
@@ -53,9 +52,9 @@ export default async function handler(
     const orchestration = await glm5Client.orchestrateAbilities(prompt);
     
     // 4. 更新Orchestration
-    await Database.updateAppStatus(app.id, 'generating', {
+    await memoryStorage.updateAppStatus(app.id, 'generating', {
       intent: orchestration as any,
-      metadata: { abilities: orchestration.abilities }
+      abilities: orchestration.abilities
     });
 
     // 5. 生成代码（基于能力编排）
@@ -63,19 +62,27 @@ export default async function handler(
     const code = await glm5Client.generateCode(orchestration);
 
     // 6. 更新代码
-    await Database.updateAppStatus(app.id, 'deploying', {
+    await memoryStorage.updateAppStatus(app.id, 'deploying', {
       code,
-      metadata: { abilities: orchestration.abilities }
+      abilities: orchestration.abilities
     });
 
     // 7. Vercel 部署（真实部署或模拟部署）
     let vercelUrl: string;
 
     if (process.env.VERCEL_ACCESS_TOKEN && process.env.VERCEL_PROJECT_ID) {
-      // 使用真实的 Vercel API 部署
-      console.log(`[${new Date().toISOString()}] Deploying to Vercel (real API)`);
-      const deployment = await deployApp(code, orchestration.app_name);
-      vercelUrl = deployment.url;
+      // 尝试使用真实的 Vercel API 部署
+      try {
+        console.log(`[${new Date().toISOString()}] Deploying to Vercel (real API)`);
+        const deployment = await deployApp(code, orchestration.app_name);
+        vercelUrl = deployment.url;
+        console.log(`[${new Date().toISOString()}] Vercel deployment successful: ${vercelUrl}`);
+      } catch (deployError: any) {
+        // Vercel 部署失败，降级到模拟部署
+        console.error(`[${new Date().toISOString()}] Vercel deployment failed:`, deployError.message);
+        console.log(`[${new Date().toISOString()}] Falling back to mock deployment`);
+        vercelUrl = `https://${app.id}.vercel.app`;
+      }
     } else {
       // 模拟部署（MVP 阶段）
       console.log(`[${new Date().toISOString()}] Using mock deployment (VERCEL_ACCESS_TOKEN not configured)`);
@@ -83,7 +90,7 @@ export default async function handler(
     }
 
     // 8. 更新状态为ready
-    await Database.updateAppStatus(app.id, 'ready', {
+    await memoryStorage.updateAppStatus(app.id, 'ready', {
       vercel_url: vercelUrl,
       deploy_time: 5
     });

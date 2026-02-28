@@ -7,7 +7,7 @@ interface VercelDeploymentOptions {
   files: Array<{
     file: string;
     data: string;
-    encoding?: 'utf8' | 'base64';
+    encoding?: 'utf-8' | 'base64';
   }>;
   projectName?: string;
   environmentVariables?: Record<string, string>;
@@ -52,7 +52,7 @@ export async function createDeployment(
     files: files.map(f => ({
       file: f.file,
       data: f.data,
-      encoding: f.encoding || 'utf8'
+      encoding: f.encoding || 'utf-8'
     })),
     env: environmentVariables
   };
@@ -142,7 +142,7 @@ export async function deployApp(
       {
         file: 'index.html',
         data: htmlContent,
-        encoding: 'utf8'
+        encoding: 'utf-8'
       },
       {
         file: 'vercel.json',
@@ -161,7 +161,7 @@ export async function deployApp(
             }
           ]
         }, null, 2),
-        encoding: 'utf8'
+        encoding: 'utf-8'
       }
     ]
   });
