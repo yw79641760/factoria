@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\"",
     "dev:web": "npm run dev --workspace=web",
-    "dev:api": "node api-server-glm5-v2.js",
+    "dev:api": "node api-server.js",
     "build": "npm run build --workspace=web",
     "deploy": "vercel --prod",
     "db:init": "echo '请在 Supabase SQL Editor 中执行 supabase/schema.sql'"

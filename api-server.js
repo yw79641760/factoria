@@ -1,60 +1,45 @@
-const express = require('express');
-const cors = require('cors');
+import express from 'express';
+import cors from 'cors';
+
+// 使用 tsx 动态导入 TypeScript 文件
+async function loadHandlers() {
+  const generateModule = await import('./api/generate-real.ts');
+  const healthModule = await import('./api/health.ts');
+  return {
+    generate: generateModule.default,
+    health: healthModule.default
+  };
+}
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    message: 'Factoria API Mock is running',
-    timestamp: new Date().toISOString()
-  });
-});
+// Start server with async handler loading
+loadHandlers().then(({ generate, health }) => {
+  // Routes
+  app.use('/api/health', health);
+  app.use('/api/generate', generate);
 
-// Generate app (mock)
-app.post('/api/generate', async (req, res) => {
-  const { prompt } = req.body;
-
-  if (!prompt) {
-    return res.status(400).json({
+  // Error handler
+  app.use((err, req, res, next) => {
+    console.error('API Error:', err);
+    res.status(500).json({
       success: false,
-      error: 'Prompt is required'
+      error: { code: 'INTERNAL_ERROR', message: err.message }
     });
-  }
-
-  // Simulate processing delay
-  await new Promise(resolve => setTimeout(resolve, 2000));
-
-  // Mock response
-  const appId = `app_${Date.now()}`;
-  const mockCode = `// Generated App: ${prompt}
-import React from 'react';
-
-export default function GeneratedApp() {
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-500 to-pink-500 p-8">
-      <h1 className="text-4xl font-bold text-white mb-4">✨ ${prompt}</h1>
-      <p className="text-white">This is your custom app!</p>
-      <p className="text-purple-200 mt-4 text-sm">App ID: ${appId}</p>
-    </div>
-  );
-}`;
-
-  res.json({
-    success: true,
-    appId,
-    url: `https://${appId}.vercel.app`,
-    code: mockCode
   });
-});
 
-app.listen(PORT, () => {
-  console.log(`🚀 Factoria API Mock running at http://localhost:${PORT}`);
-  console.log(`📝 Health: http://localhost:${PORT}/api/health`);
-  console.log(`⚡ Generate: POST http://localhost:${PORT}/api/generate`);
+  // Start server
+  app.listen(PORT, () => {
+    console.log(`🚀 Factoria API (Ability-Driven) running at http://localhost:${PORT}`);
+    console.log(`📝 Health: http://localhost:${PORT}/api/health`);
+    console.log(`⚡ Generate: POST http://localhost:${PORT}/api/generate`);
+  });
+}).catch(err => {
+  console.error('Failed to load handlers:', err);
+  process.exit(1);
 });
