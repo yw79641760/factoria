@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { ModularCodeGenerator } from './lib/modular-code-generator.js';
-import { ModuleStorage } from './lib/module-storage.js';
+import { UnifiedStorage } from './lib/unified-storage.js';
 import { deployApp } from './lib/vercel-deploy.js';
 
 /**

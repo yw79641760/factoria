@@ -9,7 +9,7 @@
  * 5. 调试验证
  */
 
-import { ModuleStorage, Module, App } from './module-storage.js';
+import { UnifiedStorage, Module, App } from './unified-storage.js';
 import { GLM5Client } from './glm5-client.js';
 
 export interface ModuleGenerationResult {
@@ -34,18 +34,18 @@ export interface OrchestrationResult {
 
 export class ModularCodeGenerator {
   private glmClient: GLM5Client;
-  private moduleStorage: ModuleStorage;
+  private storage: UnifiedStorage;
 
   constructor() {
     this.glmClient = new GLM5Client();
-    this.moduleStorage = new ModuleStorage();
+    this.storage = new UnifiedStorage();
   }
 
   /**
    * 初始化
    */
   async init(): Promise<void> {
-    await this.moduleStorage.init();
+    await this.storage.init();
   }
 
   /**
@@ -258,8 +258,8 @@ ${dependencies[moduleConfig.id] ? dependencies[moduleConfig.id].map((d: string) 
    * 将所有模块整合成完整的 React 应用
    */
   async integrateModules(appId: string, orchestration: OrchestrationResult): Promise<string> {
-    // 从 IndexedDB 读取所有模块
-    const modules = await this.moduleStorage.getModules(appId);
+    // 从存储层读取所有模块
+    const modules = await this.storage.getModules(appId);
 
     const systemPrompt = `你是一个 React 模块整合专家。
 
@@ -341,7 +341,7 @@ ${modules.map(m => `
       timestamp: Date.now()
     };
 
-    await this.moduleStorage.saveApp(app);
+    await this.storage.saveApp(app);
 
     return { app, finalCode };
   }
