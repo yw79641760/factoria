@@ -186,8 +186,8 @@ ${intent}
         timestamp: Date.now()
       };
 
-      // 存储到 IndexedDB
-      await this.moduleStorage.saveModule(module);
+      // 存储到存储层
+      await this.storage.saveModule(module);
       modules.push(module);
     }
 
