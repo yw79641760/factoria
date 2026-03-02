@@ -1,6 +1,6 @@
 /**
  * Modular Code Generator - 基于多轮对话的模块化代码生成
- * 
+ *
  * 流程：
  * 1. 意图感知（LLM）
  * 2. 需求拆解（LLM）
@@ -11,6 +11,7 @@
 
 import { UnifiedStorage, Module, App } from './unified-storage.js';
 import { GLM5Client } from './glm5-client.js';
+import { CodeValidator } from './code-validator.js';
 
 export interface ModuleGenerationResult {
   moduleId: string;
@@ -35,10 +36,12 @@ export interface OrchestrationResult {
 export class ModularCodeGenerator {
   private glmClient: GLM5Client;
   private storage: UnifiedStorage;
+  private codeValidator: CodeValidator;
 
   constructor() {
     this.glmClient = new GLM5Client();
     this.storage = new UnifiedStorage();
+    this.codeValidator = new CodeValidator();
   }
 
   /**
@@ -350,20 +353,51 @@ ${modules.map(m => `
   }
 
   /**
-   * 步骤 6：调试验证（预留接口）
+   * 步骤 6：调试验证
    */
   async validateCode(appId: string): Promise<{
     success: boolean;
     errors: string[];
     warnings: string[];
   }> {
-    // TODO: 实现代码验证逻辑
-    // 可以使用 Babel standalone 在 Node.js 中转译代码，检查语法错误
-    return {
-      success: true,
-      errors: [],
-      warnings: []
-    };
+    try {
+      // 获取应用信息
+      const app = await this.storage.getApp(appId);
+      if (!app) {
+        return {
+          success: false,
+          errors: [`App ${appId} not found`],
+          warnings: []
+        };
+      }
+
+      // 验证最终代码
+      const result = await this.codeValidator.validate(app.finalCode);
+
+      // 转换错误格式
+      const errors = result.errors.map(e =>
+        `Line ${e.line}, Col ${e.column}: ${e.message}`
+      );
+      const warnings = result.warnings.map(w =>
+        `Line ${w.line}, Col ${w.column}: ${w.message}`
+      );
+
+      console.log(`[ModularCodeGenerator] Code validation result: ${result.success ? 'SUCCESS' : 'FAILED'}`);
+      console.log(`[ModularCodeGenerator] Errors: ${errors.length}, Warnings: ${warnings.length}`);
+
+      return {
+        success: result.success,
+        errors,
+        warnings
+      };
+    } catch (error: any) {
+      console.error('[ModularCodeGenerator] Validation error:', error);
+      return {
+        success: false,
+        errors: [error.message || 'Unknown validation error'],
+        warnings: []
+      };
+    }
   }
 
   /**

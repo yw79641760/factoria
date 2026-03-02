@@ -108,6 +108,18 @@ async function generateModularApp(prompt: string) {
   console.log(`[${new Date().toISOString()}] Modular code generation completed`);
   console.log(`[${new Date().toISOString()}] Generated ${app.modules.length} modules`);
 
+  // 代码验证
+  console.log(`[${new Date().toISOString()}] Validating generated code`);
+  const validation = await generator.validateCode(app.appId);
+
+  console.log(`[${new Date().toISOString()}] Validation result: ${validation.success ? 'PASSED' : 'FAILED'}`);
+  if (validation.errors.length > 0) {
+    console.log(`[${new Date().toISOString()}] Validation errors:`, validation.errors);
+  }
+  if (validation.warnings.length > 0) {
+    console.log(`[${new Date().toISOString()}] Validation warnings:`, validation.warnings);
+  }
+
   return {
     appId: app.appId,
     appName: app.appName,
@@ -123,7 +135,12 @@ async function generateModularApp(prompt: string) {
       id: m.moduleId,
       name: m.moduleId,
       description: m.moduleId
-    }))
+    })),
+    validation: {
+      success: validation.success,
+      errors: validation.errors,
+      warnings: validation.warnings
+    }
   };
 }
 
