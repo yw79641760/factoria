@@ -104,6 +104,23 @@ export function generateHtmlFile(
   appCode: string,
   appName: string = 'My App'
 ): string {
+  // 移除 export default 和 import 语句，使组件可以在浏览器中直接使用
+  const cleanCode = appCode
+    .replace(/export default\s+/, '')
+    .replace(/export\s+/, '')
+    .replace(/import\s+\{[^}]+\}\s+from\s+['"]react['"]\s*;?/g, '')
+    .replace(/import\s+\{[^}]+\}\s+from\s+['"]react-dom['"]\s*;?/g, '')
+    .replace(/import\s+.*\s+from\s+['"][^'"]+['"]\s*;?/g, '');
+
+  // 提取组件名称
+  const componentName = getComponentName(appCode);
+
+  // 检测是否使用了 React hooks，如果使用则添加全局变量解构
+  const needsReactDestructure = /useState|useEffect|useRef|useCallback|useMemo|useContext|useReducer|useLayoutEffect|useImperativeHandle|useDebugValue/.test(cleanCode);
+  const needsReactDestructureCode = needsReactDestructure
+    ? 'const { useState, useEffect, useRef, useCallback, useMemo, useContext, useReducer, useLayoutEffect, useImperativeHandle, useDebugValue } = React;\n\n'
+    : '';
+
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -128,14 +145,38 @@ export function generateHtmlFile(
 </head>
 <body>
     <div class="container mx-auto px-4 py-8">
-        <h1 class="text-4xl font-bold text-white mb-8">${appName}</h1>
         <div id="app"></div>
-        <script type="text/babel" data-type="module">
-            ${appCode}
+        <script type="text/babel">
+            ${needsReactDestructureCode}
+            ${cleanCode}
+
+            // 渲染组件到 DOM
+            const root = ReactDOM.createRoot(document.getElementById('app'));
+            root.render(<${componentName} />);
         </script>
     </div>
 </body>
 </html>`;
+}
+
+/**
+ * 从生成的代码中提取组件名称
+ */
+function getComponentName(appCode: string): string {
+  // 尝试匹配默认导出的组件
+  const defaultExportMatch = appCode.match(/export default (?:function|const) (\w+)/);
+  if (defaultExportMatch) {
+    return defaultExportMatch[1];
+  }
+
+  // 尝试匹配命名函数
+  const namedFunctionMatch = appCode.match(/(?:function|const) (\w+)\s*[=\(]/);
+  if (namedFunctionMatch) {
+    return namedFunctionMatch[1];
+  }
+
+  // 默认返回 App
+  return 'App';
 }
 
 /**
