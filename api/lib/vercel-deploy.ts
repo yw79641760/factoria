@@ -110,7 +110,11 @@ export function generateHtmlFile(
     .replace(/export\s+/, '')
     .replace(/import\s+\{[^}]+\}\s+from\s+['"]react['"]\s*;?/g, '')
     .replace(/import\s+\{[^}]+\}\s+from\s+['"]react-dom['"]\s*;?/g, '')
-    .replace(/import\s+.*\s+from\s+['"][^'"]+['"]\s*;?/g, '');
+    .replace(/import\s+.*\s+from\s+['"][^'"]+['"]\s*;?/g, '')
+    // 移除 TypeScript 类型注解（Babel standalone 不支持）
+    .replace(/(\w+)\s*<[^>]*>/g, '$1')  // 移除泛型：useState<number>(0) → useState(0)
+    .replace(/\[\s*\w+<[^>]*>\s*\]/g, '[]')  // 移除数组泛型：Array<number>[] → []
+    .replace(/:\s*(?:string|number|boolean|any|void|null|undefined|object|Array|Function)(?=\s*[,\)=\]])/g, '')  // 移除类型声明：const x: string = → const x =
 
   // 提取组件名称
   const componentName = getComponentName(appCode);
