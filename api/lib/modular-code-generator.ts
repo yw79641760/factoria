@@ -316,6 +316,9 @@ ${modules.map(m => `
     app: App;
     finalCode: string;
   }> {
+    // 初始化存储层
+    await this.storage.init();
+
     const appId = `app_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     // 步骤 1：意图感知
