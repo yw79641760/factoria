@@ -9,10 +9,12 @@ dotenv.config({ path: path.join(process.cwd(), 'configs', '.env') });
 // 使用 tsx 动态导入 TypeScript 文件
 async function loadHandlers() {
   const generateModule = await import('./api/generate-real.ts');
+  const generateModularModule = await import('./api/generate-modular.ts');
   const healthModule = await import('./api/health.ts');
   const supabaseTestModule = await import('./api/test-supabase.ts');
   return {
     generate: generateModule.default,
+    generateModular: generateModularModule.default,
     health: healthModule.default,
     supabaseTest: supabaseTestModule.default
   };
@@ -30,6 +32,7 @@ loadHandlers().then(({ generate, health, supabaseTest }) => {
   // Routes
   app.use('/api/health', health);
   app.use('/api/generate', generate);
+  app.use('/api/generate-modular', generateModular);
   app.use('/api/test-supabase', supabaseTest);
 
   // Error handler
@@ -45,7 +48,8 @@ loadHandlers().then(({ generate, health, supabaseTest }) => {
   app.listen(PORT, () => {
     console.log(`🚀 Factoria API (Ability-Driven) running at http://localhost:${PORT}`);
     console.log(`📝 Health: http://localhost:${PORT}/api/health`);
-    console.log(`⚡ Generate: POST http://localhost:${PORT}/api/generate`);
+    console.log(`⚡ Generate (Legacy): POST http://localhost:${PORT}/api/generate`);
+    console.log(`⚡ Generate (Modular): POST http://localhost:${PORT}/api/generate-modular`);
     console.log(`🗄️  Supabase Test: GET http://localhost:${PORT}/api/test-supabase`);
   });
 }).catch(err => {
