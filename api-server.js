@@ -28,7 +28,7 @@ app.use(cors());
 app.use(express.json());
 
 // Start server with async handler loading
-loadHandlers().then(({ generate, health, supabaseTest }) => {
+loadHandlers().then(({ generate, generateModular, health, supabaseTest }) => {
   // Routes
   app.use('/api/health', health);
   app.use('/api/generate', generate);

@@ -36,3 +36,7 @@ generated/*
 *.swp
 *.swo
 .vercel
+
+# Test files
+test-*.html
+test-*.js
