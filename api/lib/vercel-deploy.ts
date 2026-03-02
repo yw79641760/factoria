@@ -98,32 +98,70 @@ export async function createDeployment(
 }
 
 /**
+ * 从生成的代码中提取组件名称
+ */
+function getComponentName(appCode: string): string {
+  // 尝试匹配默认导出的组件
+  const defaultExportMatch = appCode.match(/export default\s+(?:function|const)\s+(\w+)/);
+  if (defaultExportMatch) {
+    return defaultExportMatch[1];
+  }
+
+  // 尝试匹配命名函数
+  const namedFunctionMatch = appCode.match(/(?:function|const)\s+(\w+)\s*[=\(]/);
+  if (namedFunctionMatch) {
+    return namedFunctionMatch[1];
+  }
+
+  // 默认返回 App
+  return 'App';
+}
+
+/**
+ * 清理 LLM 生成的代码，使其在浏览器环境中可用
+ */
+function cleanGeneratedCode(appCode: string): string {
+  // 移除 export 语句
+  let cleanCode = appCode
+    .replace(/export default\s+/, '')
+    .replace(/export\s+/, '');
+
+  // 移除 import 语句（LLM 会生成这些）
+  cleanCode = cleanCode
+    .replace(/import\s+\{[^}]+\}\s+from\s+['"]react['"]\s*;?/g, '')
+    .replace(/import\s+\{[^}]+\}\s+from\s+['"]react-dom['"]\s*;?/g, '')
+    .replace(/import\s+React\s+from\s+['"]react['"]\s*;?/g, '')
+    .replace(/import\s+.*\s+from\s+['"][^'"]+['"]\s*;?/g, '');
+
+  // 移除 TypeScript 类型注解
+  cleanCode = cleanCode
+    // 移除泛型：useState<number>(0) → useState(0)
+    .replace(/(\w+)\s*<[^>]*>/g, '$1')
+    // 移除数组泛型：Array<number>[] → []
+    .replace(/\[\s*\w+<[^>]*>\s*\]/g, '[]')
+    // 移除类型声明：const x: string = → const x =
+    .replace(/:\s*(?:string|number|boolean|any|void|null|undefined|object|Array|Function)(?=\s*[,\)=\]])/g, '');
+
+  // 如果代码中没有 React hooks 解构，添加它
+  if (!/const\s+\{\s*useState[\s,]*useEffect/.test(cleanCode) && /useState|useEffect/.test(cleanCode)) {
+    cleanCode = `const { useState, useEffect } = React;\n\n${cleanCode}`;
+  }
+
+  return cleanCode;
+}
+
+/**
  * 生成 HTML 文件（基于生成的代码）
  */
 export function generateHtmlFile(
   appCode: string,
   appName: string = 'My App'
 ): string {
-  // 移除 export default 和 import 语句，使组件可以在浏览器中直接使用
-  const cleanCode = appCode
-    .replace(/export default\s+/, '')
-    .replace(/export\s+/, '')
-    .replace(/import\s+\{[^}]+\}\s+from\s+['"]react['"]\s*;?/g, '')
-    .replace(/import\s+\{[^}]+\}\s+from\s+['"]react-dom['"]\s*;?/g, '')
-    .replace(/import\s+.*\s+from\s+['"][^'"]+['"]\s*;?/g, '')
-    // 移除 TypeScript 类型注解（Babel standalone 不支持）
-    .replace(/(\w+)\s*<[^>]*>/g, '$1')  // 移除泛型：useState<number>(0) → useState(0)
-    .replace(/\[\s*\w+<[^>]*>\s*\]/g, '[]')  // 移除数组泛型：Array<number>[] → []
-    .replace(/:\s*(?:string|number|boolean|any|void|null|undefined|object|Array|Function)(?=\s*[,\)=\]])/g, '')  // 移除类型声明：const x: string = → const x =
+  // 清理代码
+  const cleanCode = cleanGeneratedCode(appCode);
 
   // 提取组件名称
   const componentName = getComponentName(appCode);
-
-  // 检测是否使用了 React hooks，如果使用则添加全局变量解构
-  const needsReactDestructure = /useState|useEffect|useRef|useCallback|useMemo|useContext|useReducer|useLayoutEffect|useImperativeHandle|useDebugValue/.test(cleanCode);
-  const needsReactDestructureCode = needsReactDestructure
-    ? 'const { useState, useEffect, useRef, useCallback, useMemo, useContext, useReducer, useLayoutEffect, useImperativeHandle, useDebugValue } = React;\n\n'
-    : '';
 
   return `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -151,7 +189,6 @@ export function generateHtmlFile(
     <div class="container mx-auto px-4 py-8">
         <div id="app"></div>
         <script type="text/babel">
-            ${needsReactDestructureCode}
             ${cleanCode}
 
             // 渲染组件到 DOM
@@ -161,26 +198,6 @@ export function generateHtmlFile(
     </div>
 </body>
 </html>`;
-}
-
-/**
- * 从生成的代码中提取组件名称
- */
-function getComponentName(appCode: string): string {
-  // 尝试匹配默认导出的组件
-  const defaultExportMatch = appCode.match(/export default (?:function|const) (\w+)/);
-  if (defaultExportMatch) {
-    return defaultExportMatch[1];
-  }
-
-  // 尝试匹配命名函数
-  const namedFunctionMatch = appCode.match(/(?:function|const) (\w+)\s*[=\(]/);
-  if (namedFunctionMatch) {
-    return namedFunctionMatch[1];
-  }
-
-  // 默认返回 App
-  return 'App';
 }
 
 /**

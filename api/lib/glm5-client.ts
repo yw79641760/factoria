@@ -191,35 +191,49 @@ UI层能力：
   async generateCode(orchestration: any): Promise<string> {
     const systemPrompt = `你是一个React代码生成专家。
 
-基于能力编排生成完整的React应用代码。
+任务：基于能力编排生成完整的React应用代码。
 
-要求：
-1. 使用React 18 + TypeScript
-2. 使用Tailwind CSS进行样式
-3. 使用localStorage进行数据持久化
-4. 代码要完整、可直接运行
-5. 组件结构清晰，可维护
+【重要】代码将直接嵌入HTML的script标签中，必须严格遵守以下格式：
 
-代码结构建议：
-- 主App组件
-- 状态管理（useState）
-- 数据持久化（useEffect）
-- UI渲染（基于编排的能力）
+标准模板（必须遵循此结构）：
+const MyAppName = () => {
+  const { useState, useEffect } = React;
+  // 组件代码
+  return (
+    <div className="...">
+      {/* JSX */}
+    </div>
+  );
+};
 
-请生成完整的代码。`;
+【禁止事项】
+- 不要使用 import 语句
+- 不要使用 TypeScript 类型注解（<T>, :T）
+- 不要使用 export default
+- 不要使用 interface
+- 不要使用 type 定义
+
+【必须事项】
+- 第一行：const { useState, useEffect } = React;
+- 使用 React hooks
+- 使用 localStorage 持久化
+- 使用 Tailwind CSS classes
+- 组件名称使用大驼峰命名
+
+请生成完整的代码（不要代码块标记）。`;
 
     const userMessage = `
-能力编排结果：
+能力编排：
 ${JSON.stringify(orchestration, null, 2)}
 
-请生成完整的React应用代码。`;
+基于以上能力编排，生成完整的React应用代码。`;
 
     try {
       const response = await this.chat([
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userMessage }
       ], {
-        temperature: 0.7,
+        temperature: 0.1,  // 极低温度，严格按照模板
         maxTokens: 3000
       });
 
