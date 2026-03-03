@@ -120,7 +120,7 @@ function getComponentName(appCode: string): string {
 /**
  * 清理 LLM 生成的代码，使其在浏览器环境中可用
  */
-function cleanGeneratedCode(appCode: string): string {
+export function cleanGeneratedCode(appCode: string): string {
   let cleanCode = appCode;
 
   // 移除所有 import 语句
@@ -144,14 +144,15 @@ function cleanGeneratedCode(appCode: string): string {
     .replace(/export\s+/, '');
 
   // 移除重复的渲染代码（因为 HTML 模板中已经有了）
-  cleanCode = cleanCode
-    // 移除 ReactDOM.createRoot 调用
-    .replace(/const\s+root\s*=\s*ReactDOM\.createRoot\s*\([^)]+\)\s*;?\s*/g, '')
-    .replace(/const\s+root\s*=\s*createRoot\s*\([^)]+\)\s*;?\s*/g, '')
-    // 移除 root.render 调用
-    .replace(/root\.render\s*\([^)]+\)\s*;?\s*/g, '')
-    // 移除整个渲染块
-    .replace(/ReactDOM\.createRoot\s*\([^)]+\)\.render\s*\([^)]+\)\s*;?\s*/g, '');
+  // 方法：直接移除包含 root 或 ReactDOM.createRoot 的行
+  const lines = cleanCode.split('\n');
+  const filteredLines = lines.filter(line => {
+    const trimmed = line.trim();
+    return !trimmed.startsWith('const root') &&
+           !trimmed.startsWith('root.render') &&
+           !trimmed.startsWith('ReactDOM.createRoot');
+  });
+  cleanCode = filteredLines.join('\n');;
 
   // 移除 TypeScript 类型注解
   cleanCode = cleanCode
