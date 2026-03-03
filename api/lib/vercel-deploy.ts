@@ -220,16 +220,16 @@ export function generateHtmlFile(
     </style>
 </head>
 <body>
-    <div class="container mx-auto px-4 py-8">
-        <div id="app"></div>
-        <script type="text/babel">
-            ${cleanCode}
+    <div id="app"></div>
+    <script type="text/babel">
+        ${cleanCode}
 
-            // 渲染组件到 DOM
+        // 自动渲染组件（如果代码中没有渲染逻辑）
+        if (!cleanCode.includes('ReactDOM.createRoot') && !cleanCode.includes('root.render')) {
             const root = ReactDOM.createRoot(document.getElementById('app'));
-            root.render(<React.StrictMode><${componentName} /></React.StrictMode>);
-        </script>
-    </div>
+            root.render(<React.StrictMode><App /></React.StrictMode>);
+        }
+    </script>
 </body>
 </html>`;
 }
