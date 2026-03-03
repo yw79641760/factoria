@@ -121,6 +121,8 @@ function getComponentName(appCode: string): string {
  * 清理 LLM 生成的代码，使其在浏览器环境中可用
  */
 export function cleanGeneratedCode(appCode: string): string {
+  console.log('[cleanGeneratedCode] Input length:', appCode.length);
+
   let cleanCode = appCode;
 
   // 移除所有 import 语句
@@ -174,6 +176,10 @@ export function cleanGeneratedCode(appCode: string): string {
   if (!/const\s+\{\s*useState[\s,]*useEffect/.test(cleanCode) && /useState|useEffect/.test(cleanCode)) {
     cleanCode = `const { useState, useEffect } = React;\n\n${cleanCode}`;
   }
+
+  console.log('[cleanGeneratedCode] Output length:', cleanCode.length);
+  console.log('[cleanGeneratedCode] Has import React:', cleanCode.includes('import React'));
+  console.log('[cleanGeneratedCode] Has root.render:', cleanCode.includes('root.render'));
 
   return cleanCode.trim();
 }
