@@ -121,17 +121,37 @@ function getComponentName(appCode: string): string {
  * 清理 LLM 生成的代码，使其在浏览器环境中可用
  */
 function cleanGeneratedCode(appCode: string): string {
+  let cleanCode = appCode;
+
+  // 移除所有 import 语句
+  cleanCode = cleanCode
+    // 默认导入：import React from 'react'
+    .replace(/import\s+React\s+from\s+['"]react['"]\s*;?\s*\n?/g, '')
+    // 命名导入：import { useState, useEffect } from 'react'
+    .replace(/import\s+\{[^}]+\}\s+from\s+['"]react['"]\s*;?\s*\n?/g, '')
+    // react-dom 导入：import ReactDOM from 'react-dom/client'
+    .replace(/import\s+ReactDOM\s+from\s+['"]react-dom[\/\\w]*['"]\s*;?\s*\n?/g, '')
+    // react-dom 命名导入：import { createRoot } from 'react-dom/client'
+    .replace(/import\s+\{[^}]+\}\s+from\s+['"]react-dom[\/\\w]*['"]\s*;?\s*\n?/g, '')
+    // CSS 导入：import './index.css'
+    .replace(/import\s+['"]\.\/[^'"]+['"]\s*;?\s*\n?/g, '')
+    // 其他导入：import anything from 'anything'
+    .replace(/import\s+.*?from\s+['"][^'"]+['"]\s*;?\s*\n?/g, '');
+
   // 移除 export 语句
-  let cleanCode = appCode
+  cleanCode = cleanCode
     .replace(/export default\s+/, '')
     .replace(/export\s+/, '');
 
-  // 移除 import 语句（LLM 会生成这些）
+  // 移除重复的渲染代码（因为 HTML 模板中已经有了）
   cleanCode = cleanCode
-    .replace(/import\s+\{[^}]+\}\s+from\s+['"]react['"]\s*;?/g, '')
-    .replace(/import\s+\{[^}]+\}\s+from\s+['"]react-dom['"]\s*;?/g, '')
-    .replace(/import\s+React\s+from\s+['"]react['"]\s*;?/g, '')
-    .replace(/import\s+.*\s+from\s+['"][^'"]+['"]\s*;?/g, '');
+    // 移除 ReactDOM.createRoot 调用
+    .replace(/const\s+root\s*=\s*ReactDOM\.createRoot\s*\([^)]+\)\s*;?\s*/g, '')
+    .replace(/const\s+root\s*=\s*createRoot\s*\([^)]+\)\s*;?\s*/g, '')
+    // 移除 root.render 调用
+    .replace(/root\.render\s*\([^)]+\)\s*;?\s*/g, '')
+    // 移除整个渲染块
+    .replace(/ReactDOM\.createRoot\s*\([^)]+\)\.render\s*\([^)]+\)\s*;?\s*/g, '');
 
   // 移除 TypeScript 类型注解
   cleanCode = cleanCode
@@ -140,14 +160,21 @@ function cleanGeneratedCode(appCode: string): string {
     // 移除数组泛型：Array<number>[] → []
     .replace(/\[\s*\w+<[^>]*>\s*\]/g, '[]')
     // 移除类型声明：const x: string = → const x =
-    .replace(/:\s*(?:string|number|boolean|any|void|null|undefined|object|Array|Function)(?=\s*[,\)=\]])/g, '');
+    .replace(/:\s*(?:string|number|boolean|any|void|null|undefined|object|Array|Function)(?=\s*[,\)=\]])/g, '')
+    // 移除类型断言：as HTMLElement
+    .replace(/\s+as\s+\w+(?=\s*[,\);])/g, '');
+
+  // 移除 React.StrictMode（HTML 模板中已经有了）
+  cleanCode = cleanCode
+    .replace(/<React\.StrictMode>/g, '')
+    .replace(/<\/React\.StrictMode>/g, '');
 
   // 如果代码中没有 React hooks 解构，添加它
   if (!/const\s+\{\s*useState[\s,]*useEffect/.test(cleanCode) && /useState|useEffect/.test(cleanCode)) {
     cleanCode = `const { useState, useEffect } = React;\n\n${cleanCode}`;
   }
 
-  return cleanCode;
+  return cleanCode.trim();
 }
 
 /**
@@ -193,7 +220,7 @@ export function generateHtmlFile(
 
             // 渲染组件到 DOM
             const root = ReactDOM.createRoot(document.getElementById('app'));
-            root.render(<${componentName} />);
+            root.render(<React.StrictMode><${componentName} /></React.StrictMode>);
         </script>
     </div>
 </body>
